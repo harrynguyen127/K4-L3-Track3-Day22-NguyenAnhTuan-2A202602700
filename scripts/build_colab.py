@@ -6,7 +6,7 @@ The Colab bundles used to be hand-edited copies that drifted from
 `%%writefile`, then every notebook's cells follow in order.
 
     python scripts/build_colab.py          # rewrite colab/*.ipynb
-    python scripts/build_colab.py --check  # exit 1 if they are stale
+    python scripts/build_colab.py --check  # check sources, preserving execution outputs
 """
 from __future__ import annotations
 
@@ -148,6 +148,17 @@ def render(tier: str) -> dict:
     }
 
 
+def same_sources(notebook: dict, generated: dict) -> bool:
+    """Check generated cells while allowing a completed notebook to retain outputs."""
+    actual = notebook.get("cells", [])
+    expected = generated["cells"]
+    return len(actual) == len(expected) and all(
+        cell.get("cell_type") == source["cell_type"]
+        and cell.get("source") == source["source"]
+        for cell, source in zip(actual, expected)
+    )
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--check", action="store_true", help="fail if colab/*.ipynb differ from the sources")
@@ -157,7 +168,7 @@ def main() -> int:
         path = REPO / "colab" / name
         nb = render(tier)
         if args.check:
-            if not path.exists() or json.loads(path.read_text(encoding="utf-8")) != nb:
+            if not path.exists() or not same_sources(json.loads(path.read_text(encoding="utf-8")), nb):
                 stale.append(name)
             continue
         path.write_text(json.dumps(nb, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")

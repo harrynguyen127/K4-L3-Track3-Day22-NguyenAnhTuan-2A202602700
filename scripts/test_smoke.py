@@ -43,8 +43,8 @@ def test_no_hardcoded_judge_model():
 
 
 def test_colab_bundles_are_valid_and_current():
-    from build_colab import render
+    from build_colab import render, same_sources
 
     for tier, path in (("T4", "Lab22_DPO_T4.ipynb"), ("BIGGPU", "Lab22_DPO_BigGPU.ipynb")):
         on_disk = json.loads((REPO / "colab" / path).read_text(encoding="utf-8"))
-        assert on_disk == render(tier), f"colab/{path} is stale: run `make colab`"
+        assert same_sources(on_disk, render(tier)), f"colab/{path} is stale: run `make colab`"

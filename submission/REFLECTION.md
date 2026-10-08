@@ -5,8 +5,9 @@
 **Tier đã chạy:** T4
 **Ngày:** 2026-10-08
 
-> Mọi con số dưới đây lấy từ file do notebook sinh ra (`adapters/dpo/dpo_metrics.json`,
-> `data/eval/judge_summary.json`, `data/eval/benchmark_results.json`…), không ước lượng bằng mắt.
+> Cấu hình lấy từ `lab22/config.py`; các kết quả NB0 lấy từ output notebook.
+> Chỉ số NB2 cần đối chiếu lại với `data/pref/stats.json` của phiên Colab; các chỉ số NB3–NB4
+> chỉ được điền sau khi có file kết quả, không ước lượng bằng mắt.
 
 ---
 
@@ -14,12 +15,13 @@
 
 | Mục | Giá trị |
 |---|---|
-| GPU / VRAM | Colab T4 15 GB
+| GPU / VRAM | Colab T4 15 GB |
 | Mô hình gốc | unsloth/Qwen3-4B-Instruct-2507-unsloth-bnb-4bit |
 | Dữ liệu SFT | `saillab/alpaca-vietnamese-cleaned · 1.000 mẫu · 1 epoch` |
-| Dữ liệu sở thích | _<sailor2/sea-ultrafeedback-onpolicy (vi) · N huấn luyện / N held-out>_ |
-| Chosen dài hơn rejected (NB2) | 66% |
-| DPO: β / tốc độ học (lr) / số epoch | _<0.1 / 5e-6 / 1>_ |
+| Dữ liệu sở thích | `sailor2/sea-ultrafeedback-onpolicy` (vi) · 800 cặp huấn luyện / 100 cặp held-out (không trùng prompt) |
+| Chosen / rejected median (NB2) | 94 / 86 token |
+| Chosen dài hơn rejected (NB2) | 65,9% |
+| DPO: β / tốc độ học (lr) / số epoch | 0,1 / 5e-6 / 1 (cấu hình T4) |
 | Giám khảo | _<rm:tên-mô-hình hoặc nhà-cung-cấp:tên-mô-hình; sanity accuracy>_ |
 | Chi phí | _<0 đồng (Colab miễn phí) / ...>_ |
 
@@ -48,7 +50,7 @@ Margin tăng vì chosen tăng hay vì rejected giảm nhanh hơn (dịch chuyể
 cùng hướng với tập huấn luyện không, hay chỉ tập huấn luyện tăng (học thuộc, overfit)? Chẩn đoán tự động có khớp với điều bạn
 thấy không?_
 
-_Trả lời ở đây._
+Ở NB0, khi mô hình đang học trùng mô hình tham chiếu, reward của cả `chosen` và `rejected` đều bằng 0, nên loss là 0,6931 (`log 2`). Hai kịch bản A và B cùng có margin bằng 2 và DPO loss bằng 0,127. Trong kịch bản B, log-xác suất của `chosen` giảm 3 nat nhưng của `rejected` giảm 5 nat; hiệu giữa hai thay đổi vẫn là 2. Vì DPO tối ưu hiệu này, loss có thể giảm dù câu trả lời được chọn cũng mất xác suất: đó là *likelihood displacement*. Khi thêm NLL của `chosen`, RPO phạt kịch bản B nặng hơn A (2,427 so với 2,027). DPO dùng tổng log-xác suất trên toàn câu nên độ dài còn ảnh hưởng độ lớn tín hiệu; SimPO và ORPO dùng log-xác suất trung bình theo token để giảm thiên lệch này. Cần đối chiếu riêng hai đường `chosen`/`rejected` trên train và held-out ở NB3 trước khi kết luận mô hình thực tế thuộc chẩn đoán nào.
 
 ---
 
@@ -83,7 +85,7 @@ _Trả lời ở đây._
 | 0.1 | | | | |
 | 0.5 | | | | |
 
-_Nếu không chạy: viết giả thuyết 3 câu về điều bạn dự đoán sẽ thấy._
+Nếu không chạy β-sweep, tôi dự đoán β = 0,05 cho phép policy lệch khỏi reference SFT nhiều hơn, nên margin held-out có thể lớn hơn nhưng rủi ro dịch chuyển xác suất và học thuộc cũng tăng. Với β = 0,5, tôi kỳ vọng thay đổi bảo thủ hơn và margin nhỏ hơn; tuy nhiên số bước và tốc độ học cố định có thể khiến xu hướng thực tế khác dự đoán. Đây chỉ là giả thuyết, chưa phải kết quả đo.
 
 ---
 
